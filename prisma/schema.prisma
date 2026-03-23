@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String           @id @default(cuid())
+  username        String           @unique
+  password        String
+  setupDone       Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  programs        Program[]
+  personalRecords PersonalRecord[]
+}
+
+model Program {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  cycleDays    Int
+  createdAt    DateTime      @default(now())
+  trainingDays TrainingDay[]
+  weekLogs     WeekLog[]
+}
+
+model TrainingDay {
+  id        String     @id @default(cuid())
+  programId String
+  program   Program    @relation(fields: [programId], references: [id], onDelete: Cascade)
+  name      String
+  dayIndex  Int
+  dayOfWeek String?
+  exercises Exercise[]
+  sessionLogs SessionLog[]
+}
+
+model Exercise {
+  id              String       @id @default(cuid())
+  trainingDayId   String
+  trainingDay     TrainingDay  @relation(fields: [trainingDayId], references: [id], onDelete: Cascade)
+  name            String
+  order           Int
+  currentWeight   Float
+  targetSets      Int
+  targetReps      Int
+  restSeconds     Int
+  weightIncrement Float
+  failureAction   String       // Enum: "MORE_SETS", "RETRY", "DELOAD"
+  failureValue    Float?
+}
+
+model WeekLog {
+  id          String       @id @default(cuid())
+  programId   String
+  program     Program      @relation(fields: [programId], references: [id], onDelete: Cascade)
+  weekNumber  Int
+  startDate   DateTime
+  createdAt   DateTime     @default(now())
+  sessionLogs SessionLog[]
+}
+
+model SessionLog {
+  id            String            @id @default(cuid())
+  weekLogId     String
+  weekLog       WeekLog           @relation(fields: [weekLogId], references: [id], onDelete: Cascade)
+  trainingDayId String
+  trainingDay   TrainingDay       @relation(fields: [trainingDayId], references: [id], onDelete: Cascade)
+  date          DateTime
+  completed     Boolean           @default(false)
+  notes         String?
+  exercises     SessionExercise[]
+}
+
+model SessionExercise {
+  id               String     @id @default(cuid())
+  sessionLogId     String
+  sessionLog       SessionLog @relation(fields: [sessionLogId], references: [id], onDelete: Cascade)
+  exerciseId       String
+  order            Int
+  prescribedWeight Float
+  prescribedReps   Int
+  prescribedSets   Int
+  actualReps       String     // JSON array of actual reps completed, e.g. "[8,8,7]"
+  
+  @@unique([sessionLogId, exerciseId])
+}
+
+model PersonalRecord {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseName String
+  weight       Float
+  reps         Int
+  achievedAt   DateTime @default(now())
+}
